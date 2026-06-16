@@ -1,0 +1,420 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Music Downloader & Player API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: songs
+    description: Downloaded songs library
+  - name: downloads
+    description: Download queue management
+  - name: playlists
+    description: Playlist management
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /songs:
+    get:
+      operationId: listSongs
+      tags: [songs]
+      summary: List all downloaded songs
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by title or artist
+        - in: query
+          name: playlistId
+          schema:
+            type: integer
+          description: Filter by playlist
+      responses:
+        "200":
+          description: List of songs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Song"
+
+  /songs/{id}:
+    get:
+      operationId: getSong
+      tags: [songs]
+      summary: Get a single song
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Song details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteSong
+      tags: [songs]
+      summary: Delete a song from library
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /downloads:
+    get:
+      operationId: listDownloads
+      tags: [downloads]
+      summary: List all download jobs
+      responses:
+        "200":
+          description: List of download jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DownloadJob"
+    post:
+      operationId: createDownload
+      tags: [downloads]
+      summary: Start downloading a song or playlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDownloadRequest"
+      responses:
+        "201":
+          description: Download job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+
+  /downloads/{id}:
+    get:
+      operationId: getDownload
+      tags: [downloads]
+      summary: Get download job status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Download job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+    delete:
+      operationId: cancelDownload
+      tags: [downloads]
+      summary: Cancel or remove a download job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Cancelled
+
+  /playlists:
+    get:
+      operationId: listPlaylists
+      tags: [playlists]
+      summary: List all playlists
+      responses:
+        "200":
+          description: List of playlists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Playlist"
+    post:
+      operationId: createPlaylist
+      tags: [playlists]
+      summary: Create a new playlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlaylistRequest"
+      responses:
+        "201":
+          description: Playlist created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+
+  /playlists/{id}:
+    get:
+      operationId: getPlaylist
+      tags: [playlists]
+      summary: Get playlist with songs
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Playlist details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaylistWithSongs"
+    delete:
+      operationId: deletePlaylist
+      tags: [playlists]
+      summary: Delete a playlist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /playlists/{id}/songs:
+    post:
+      operationId: addSongToPlaylist
+      tags: [playlists]
+      summary: Add a song to playlist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistSongInput"
+      responses:
+        "201":
+          description: Added
+
+  /playlists/{id}/songs/{songId}:
+    delete:
+      operationId: removeSongFromPlaylist
+      tags: [playlists]
+      summary: Remove a song from playlist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: songId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [songs]
+      summary: Get library stats
+      responses:
+        "200":
+          description: Library statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryStats"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    Song:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+          nullable: true
+        duration:
+          type: integer
+          nullable: true
+          description: Duration in seconds
+        filePath:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        fileSize:
+          type: integer
+          nullable: true
+          description: File size in bytes
+        downloadedAt:
+          type: string
+          format: date-time
+      required: [id, title, artist, filePath, downloadedAt]
+
+    DownloadJob:
+      type: object
+      properties:
+        id:
+          type: integer
+        query:
+          type: string
+          description: Search query or URL
+        status:
+          type: string
+          enum: [pending, downloading, done, failed]
+        progress:
+          type: integer
+          nullable: true
+          description: Progress 0-100
+        error:
+          type: string
+          nullable: true
+        songId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        artist:
+          type: string
+          nullable: true
+        thumbnailUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, query, status, createdAt]
+
+    CreateDownloadRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          description: Song name, artist, YouTube URL
+        queries:
+          type: array
+          items:
+            type: string
+          description: Multiple queries for batch download
+      required: []
+
+    Playlist:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        songCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, songCount, createdAt]
+
+    PlaylistWithSongs:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        songs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Song"
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, songs, createdAt]
+
+    CreatePlaylistRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    PlaylistSongInput:
+      type: object
+      properties:
+        songId:
+          type: integer
+      required: [songId]
+
+    LibraryStats:
+      type: object
+      properties:
+        totalSongs:
+          type: integer
+        totalPlaylists:
+          type: integer
+        totalDownloaded:
+          type: integer
+        activeDownloads:
+          type: integer
+        totalSizeMb:
+          type: number
+      required: [totalSongs, totalPlaylists, totalDownloaded, activeDownloads, totalSizeMb]
